@@ -1,18 +1,24 @@
 {
-	"name": "defillama-proxy",
-	"version": "0.0.0",
-	"private": true,
-	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest",
-		"cf-typegen": "wrangler types"
-	},
-	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"typescript": "^5.5.2",
-		"vitest": "~3.2.0",
-		"wrangler": "^4.27.0"
-	}
+  "name": "defillama-proxy",
+  "version": "0.0.1",
+  "author": "ℭ𝔦𝔭𝔥𝔢𝔯",
+  "description": "cloudflare-worker filtering proxy for defillama api endpoints; enhancing type-safety implementing the effect.ts library",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "test": "bun test",
+    "cf-typegen": "wrangler types",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.9",
+    "typescript": "5.9.3",
+    "wrangler": "4.69.0"
+  },
+  "dependencies": {
+    "@effect/platform": "0.94.5",
+    "effect": "3.19.19",
+    "hono": "4.12.3"
+  }
 }
