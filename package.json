@@ -8,6 +8,8 @@
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "bun test",
+    "typecheck": "bunx tsc --noEmit",
+    "check": "bun run test && bun run typecheck",
     "cf-typegen": "wrangler types",
     "tail": "wrangler tail"
   },

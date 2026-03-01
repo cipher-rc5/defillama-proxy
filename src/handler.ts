@@ -8,6 +8,15 @@ import { CacheService } from './cache';
 import { ApiError, ChainNotFoundError, InvalidProtocolError, UpstreamError } from './errors';
 import { ChainsResponse, ProtocolData, QueryParams, TvlResponse } from './schema';
 
+const resolveChainKey = (
+  chainTvls: Record<string, { readonly tvl: ReadonlyArray<{ readonly date: number, readonly totalLiquidityUSD: number }> }>,
+  chain: string
+) => {
+  if (chainTvls[chain]) return chain;
+  const requested = chain.toLowerCase();
+  return Object.keys(chainTvls).find(candidate => candidate.toLowerCase() === requested);
+};
+
 // Cache full protocol data and filter at query time.
 export const handleTvl = (
   protocol: string,
@@ -21,9 +30,10 @@ export const handleTvl = (
   Effect.gen(function*() {
     const client = yield* DeFiLlamaClient;
     const cache = yield* CacheService;
+    const normalizedProtocol = protocol.trim().toLowerCase();
 
     // Cache at protocol level to reuse across queries.
-    const cacheKey = `protocol:${protocol}`;
+    const cacheKey = `protocol:${normalizedProtocol}`;
 
     // Check cache for full protocol data
     const cached = yield* cache.get<ProtocolData>(cacheKey);
@@ -45,25 +55,27 @@ export const handleTvl = (
       if (Option.isSome(decoded)) {
         data = decoded.value;
       } else {
-        data = yield* client.fetchProtocol(protocol);
+        data = yield* client.fetchProtocol(normalizedProtocol);
         yield* cache.set(cacheKey, data, 600);
       }
     } else {
       yield* Effect.log(`Cache miss: ${cacheKey}`);
-      data = yield* client.fetchProtocol(protocol);
+      data = yield* client.fetchProtocol(normalizedProtocol);
       // Cache the full protocol data
       yield* cache.set(cacheKey, data, 600);
     }
 
+    const resolvedChain = resolveChainKey(data.chainTvls, chain);
+
     // Check if chain exists
-    if (!data.chainTvls[chain]) {
+    if (!resolvedChain) {
       return yield* Effect.fail(
         new ChainNotFoundError({ protocol, chain, availableChains: Object.keys(data.chainTvls) })
       );
     }
 
     // Process TVL data with filtering
-    let tvl = data.chainTvls[chain].tvl;
+    let tvl = [...data.chainTvls[resolvedChain].tvl].sort((a, b) => a.date - b.date);
 
     // Apply filters
     if (params.days > 0) {
@@ -76,8 +88,8 @@ export const handleTvl = (
     }
 
     return new TvlResponse({
-      protocol,
-      chain,
+      protocol: normalizedProtocol,
+      chain: resolvedChain,
       query: {
         days: params.days === 0 ? 'all' as const : params.days,
         limit: params.limit === 0 ? 'all' as const : params.limit
@@ -93,9 +105,10 @@ export const handleChains = (
   Effect.gen(function*() {
     const client = yield* DeFiLlamaClient;
     const cache = yield* CacheService;
+    const normalizedProtocol = protocol.trim().toLowerCase();
 
     // Reuse same cache key pattern
-    const cacheKey = `protocol:${protocol}`;
+    const cacheKey = `protocol:${normalizedProtocol}`;
 
     const cached = yield* cache.get<ProtocolData>(cacheKey);
 
@@ -116,14 +129,14 @@ export const handleChains = (
       if (Option.isSome(decoded)) {
         data = decoded.value;
       } else {
-        data = yield* client.fetchProtocol(protocol);
+        data = yield* client.fetchProtocol(normalizedProtocol);
         yield* cache.set(cacheKey, data, 3600);
       }
     } else {
       yield* Effect.log(`Cache miss: ${cacheKey}`);
-      data = yield* client.fetchProtocol(protocol);
+      data = yield* client.fetchProtocol(normalizedProtocol);
       yield* cache.set(cacheKey, data, 3600);
     }
 
-    return new ChainsResponse({ protocol, chains: Object.keys(data.chainTvls) });
+    return new ChainsResponse({ protocol: normalizedProtocol, chains: Object.keys(data.chainTvls) });
   });

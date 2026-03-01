@@ -20,8 +20,14 @@ export class ProtocolData
 // Query parameters for TVL endpoint
 export class QueryParams
   extends Schema.Class<QueryParams>('QueryParams')({
-    days: Schema.optionalWith(Schema.NumberFromString.pipe(Schema.nonNegative()), { default: () => 30 }),
-    limit: Schema.optionalWith(Schema.NumberFromString.pipe(Schema.nonNegative()), { default: () => 0 })
+    days: Schema.optionalWith(
+      Schema.NumberFromString.pipe(Schema.int(), Schema.nonNegative(), Schema.lessThanOrEqualTo(3650)),
+      { default: () => 30 }
+    ),
+    limit: Schema.optionalWith(
+      Schema.NumberFromString.pipe(Schema.int(), Schema.nonNegative(), Schema.lessThanOrEqualTo(5000)),
+      { default: () => 0 }
+    )
   }) {}
 
 // TVL API response schema

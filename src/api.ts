@@ -7,6 +7,26 @@ import { Context, Duration, Effect, Layer, pipe, Schedule, Schema } from 'effect
 import { ApiError, InvalidProtocolError, UpstreamError } from './errors';
 import { ProtocolData } from './schema';
 
+const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
+const CIRCUIT_BREAKER_COOLDOWN_MS = 30000;
+
+let consecutiveFailures = 0;
+let circuitOpenUntil = 0;
+
+const isCircuitOpen = (): boolean => Date.now() < circuitOpenUntil;
+
+const registerFailure = (): void => {
+  consecutiveFailures += 1;
+  if (consecutiveFailures >= CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+    circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS;
+  }
+};
+
+const registerSuccess = (): void => {
+  consecutiveFailures = 0;
+  circuitOpenUntil = 0;
+};
+
 // 1. Define the service interface using Context.Tag
 export class DeFiLlamaClient
   extends Context.Tag('DeFiLlamaClient')<
@@ -29,6 +49,15 @@ export const DeFiLlamaClientLive = (timeout: number) =>
         fetchProtocol: (
           protocol: string
         ): Effect.Effect<ProtocolData, ApiError | InvalidProtocolError | UpstreamError, never> => {
+          if (isCircuitOpen()) {
+            return Effect.fail(
+              new UpstreamError({
+                message: 'Upstream circuit breaker is open; retry shortly',
+                retryable: false
+              })
+            );
+          }
+
           const url = `https://api.llama.fi/protocol/${encodeURIComponent(protocol)}`;
 
           return pipe(
@@ -97,6 +126,14 @@ export const DeFiLlamaClientLive = (timeout: number) =>
             }),
             // Add tracing
             Effect.withSpan('fetchProtocol', { attributes: { protocol } }),
+            Effect.tap(() => Effect.sync(registerSuccess)),
+            Effect.tapError((error) =>
+              Effect.sync(() => {
+                if (!(error instanceof InvalidProtocolError)) {
+                  registerFailure();
+                }
+              })
+            ),
             // Map any HttpClientError to UpstreamError to match our return type signature
             Effect.mapError(error => {
               if (

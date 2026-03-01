@@ -164,6 +164,14 @@ curl http://localhost:8787/protocol/invalid-protocol/tvl/Ethereum
 curl http://localhost:8787/protocol/uniswap/chains
 ```
 
+```zsh
+curl 'http://localhost:8787/protocol/aave/tvl/Ethereum?days=7'
+or
+curl http://localhost:8787/protocol/aave/tvl/Ethereum\?days=7
+or (zsh-specific)
+noglob curl http://localhost:8787/protocol/aave/tvl/Ethereum?days=7
+```
+
 Repomix
 
 ```bash

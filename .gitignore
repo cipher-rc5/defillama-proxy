@@ -166,3 +166,4 @@ dist
 !.env.example
 .wrangler/
 /_dev*
+bun.lock
