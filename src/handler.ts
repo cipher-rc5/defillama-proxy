@@ -57,7 +57,9 @@ export const handleTvl = (
 
     // Check if chain exists
     if (!data.chainTvls[chain]) {
-      return yield* Effect.fail(new ChainNotFoundError({ protocol, chain, availableChains: Object.keys(data.chainTvls) }));
+      return yield* Effect.fail(
+        new ChainNotFoundError({ protocol, chain, availableChains: Object.keys(data.chainTvls) })
+      );
     }
 
     // Process TVL data with filtering
@@ -76,7 +78,10 @@ export const handleTvl = (
     return new TvlResponse({
       protocol,
       chain,
-      query: { days: params.days === 0 ? 'all' as const : params.days, limit: params.limit === 0 ? 'all' as const : params.limit },
+      query: {
+        days: params.days === 0 ? 'all' as const : params.days,
+        limit: params.limit === 0 ? 'all' as const : params.limit
+      },
       count: tvl.length,
       tvl
     });

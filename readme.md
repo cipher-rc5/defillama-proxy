@@ -14,18 +14,21 @@ A lightweight Cloudflare Worker that proxies and filters DeFiLlama's protocol da
 ## Setup & Deployment
 
 1. **Install dependencies:**
+
 ```bash
 bun install
 # or npm install
 ```
 
 2. **Login to Cloudflare:**
+
 ```bash
 bunx wrangler login
 # or npx wrangler login
 ```
 
 3. **Deploy the worker:**
+
 ```bash
 bun run deploy
 # or npm run deploy
@@ -36,22 +39,26 @@ Your worker will be deployed to: `https://defi-tvl-proxy.{your-subdomain}.worker
 ## API Endpoints
 
 ### Get TVL Data
+
 ```
 GET /protocol/{protocol}/tvl/{chain}?days={days}&limit={limit}
 ```
 
 Parameters:
+
 - `protocol` (required): Protocol name (e.g., aave, uniswap, curve)
 - `chain` (optional): Chain name (default: "Ethereum")
 - `days` (optional): Number of days to look back (default: 30, use 0 for all data)
 - `limit` (optional): Maximum entries to return (default: 0 for no limit)
 
 ### List Available Chains for a Protocol
+
 ```
 GET /protocol/{protocol}/chains
 ```
 
 ### Health Check
+
 ```
 GET /
 ```
@@ -59,6 +66,7 @@ GET /
 ## Usage in Dune Analytics
 
 ### Aave on Ethereum (last 30 days, limit 10):
+
 ```sql
 WITH tvl_data AS (
     SELECT json_parse(
@@ -75,6 +83,7 @@ CROSS JOIN UNNEST(
 ```
 
 ### Uniswap on Arbitrum (last 7 days):
+
 ```sql
 WITH tvl_data AS (
     SELECT json_parse(
@@ -91,6 +100,7 @@ CROSS JOIN UNNEST(
 ```
 
 ### Check available chains for Curve:
+
 ```sql
 SELECT json_parse(
     http_get('https://your-worker.workers.dev/protocol/curve/chains')
@@ -100,20 +110,21 @@ SELECT json_parse(
 ## Error Handling
 
 The proxy returns `invalid_protocol_requested` when:
+
 - The protocol doesn't exist on DeFiLlama
 - The API returns invalid data
 - The protocol name is misspelled
 
 Example error response:
+
 ```json
-{
-  "error": "invalid_protocol_requested"
-}
+{ "error": "invalid_protocol_requested" }
 ```
 
 ## Popular Protocols
 
 Some commonly used protocols:
+
 - `aave` - Lending protocol
 - `uniswap` - DEX
 - `curve` - Stablecoin DEX
@@ -128,6 +139,7 @@ Some commonly used protocols:
 ## Development
 
 Run locally:
+
 ```bash
 bun run dev
 # or npm run dev
@@ -140,6 +152,7 @@ bunx wrangler dev
 The worker will be available at `http://localhost:8787`
 
 Test locally:
+
 ```bash
 # Test Aave
 curl http://localhost:8787/protocol/aave/tvl/Ethereum?days=7&limit=5
@@ -152,6 +165,7 @@ curl http://localhost:8787/protocol/uniswap/chains
 ```
 
 Repomix
+
 ```bash
 repomix --style markdown -o _v01-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,dprint.json,tsconfig.json,wrangler.jsonc
 
@@ -180,6 +194,7 @@ defi-tvl-proxy/
 ## Troubleshooting
 
 If you get `invalid_protocol_requested`:
+
 1. Check the protocol name spelling
 2. Verify the protocol exists on [DeFiLlama](https://defillama.com/)
 3. Use the exact protocol slug from DeFiLlama URLs

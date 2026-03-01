@@ -13,7 +13,9 @@ export class ChainTvl extends Schema.Class<ChainTvl>('ChainTvl')({ tvl: Schema.A
 
 // Protocol data schema from DeFiLlama API
 export class ProtocolData
-  extends Schema.Class<ProtocolData>('ProtocolData')({ chainTvls: Schema.Record({ key: Schema.String, value: ChainTvl }) }) {}
+  extends Schema.Class<ProtocolData>('ProtocolData')({
+    chainTvls: Schema.Record({ key: Schema.String, value: ChainTvl })
+  }) {}
 
 // Query parameters for TVL endpoint
 export class QueryParams
@@ -37,4 +39,7 @@ export class TvlResponse
 
 // Chains API response schema
 export class ChainsResponse
-  extends Schema.Class<ChainsResponse>('ChainsResponse')({ protocol: Schema.String, chains: Schema.Array(Schema.String) }) {}
+  extends Schema.Class<ChainsResponse>('ChainsResponse')({
+    protocol: Schema.String,
+    chains: Schema.Array(Schema.String)
+  }) {}

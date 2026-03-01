@@ -19,4 +19,6 @@ export class UpstreamError extends Data.TaggedError('UpstreamError')<{ message: 
 
 // Error parsing or validating data
 export class ParseError
-  extends Data.TaggedError('ParseError')<{ message: string, source: 'query' | 'cache' | 'upstream', cause?: unknown }> {}
+  extends Data.TaggedError('ParseError')<
+    { message: string, source: 'query' | 'cache' | 'upstream', cause?: unknown }
+  > {}

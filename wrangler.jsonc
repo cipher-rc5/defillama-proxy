@@ -6,7 +6,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "defillama-proxy",
   "main": "src/index.ts",
-  "compatibility_date": "2025-07-30",
+  "compatibility_date": "2026-02-28",
   "observability": { "enabled": true },
   /**
 	 * Smart Placement

@@ -8,9 +8,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { DeFiLlamaClient, DeFiLlamaClientLive } from './api';
 import { CacheService, CacheServiceLive } from './cache';
+import { ParseError } from './errors';
 import { handleChains, handleTvl } from './handler';
 import { QueryParams } from './schema';
-import { ParseError } from './errors';
 
 interface Bindings {
   CACHE_TTL?: string;
@@ -92,13 +92,12 @@ app.get('/protocol/:protocol/tvl/:chain?', async (c) => {
   const chain = c.req.param('chain') || 'Ethereum';
 
   const program = Effect.gen(function*() {
-    const rawQuery = {
-      days: c.req.query('days'),
-      limit: c.req.query('limit')
-    };
+    const rawQuery = { days: c.req.query('days'), limit: c.req.query('limit') };
 
     const queryParams = yield* Schema.decodeUnknown(QueryParams)(rawQuery).pipe(
-      Effect.mapError((cause) => new ParseError({ message: `Invalid query parameters: ${String(cause)}`, source: 'query', cause }))
+      Effect.mapError((cause) =>
+        new ParseError({ message: `Invalid query parameters: ${String(cause)}`, source: 'query', cause })
+      )
     );
 
     return yield* handleTvl(protocol, chain, queryParams);

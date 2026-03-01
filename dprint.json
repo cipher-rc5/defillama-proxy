@@ -1,6 +1,6 @@
 {
   "typescript": {
-    "lineWidth": 140,
+    "lineWidth": 120,
     "indentWidth": 2,
     "useTabs": false,
     "semiColons": "prefer",
@@ -92,10 +92,7 @@
     "comment.forceLeadingSpace": true,
     "cargo.applyConventions": true
   },
-  "excludes": [
-    "**/node_modules",
-    "**/*-lock.json"
-  ],
+  "excludes": ["**/node_modules", "**/*-lock.json"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.15.wasm",
     "https://plugins.dprint.dev/json-0.21.1.wasm",

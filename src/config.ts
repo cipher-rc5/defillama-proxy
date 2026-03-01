@@ -56,7 +56,14 @@ export const AppConfigLive = Layer.effect(
     // Load supported protocols
     const supportedProtocols = yield* loadSupportedProtocols();
 
-    return AppConfig.of({ cacheTtl, apiTimeout, retryInitialInterval, retryMaxAttempts, maxConcurrentRequests, supportedProtocols });
+    return AppConfig.of({
+      cacheTtl,
+      apiTimeout,
+      retryInitialInterval,
+      retryMaxAttempts,
+      maxConcurrentRequests,
+      supportedProtocols
+    });
   })
 );
 
@@ -81,6 +88,13 @@ export const AppConfigFromEnv = (
 
       const supportedProtocols = yield* loadSupportedProtocols();
 
-      return AppConfig.of({ cacheTtl, apiTimeout, retryInitialInterval, retryMaxAttempts, maxConcurrentRequests, supportedProtocols });
+      return AppConfig.of({
+        cacheTtl,
+        apiTimeout,
+        retryInitialInterval,
+        retryMaxAttempts,
+        maxConcurrentRequests,
+        supportedProtocols
+      });
     })
   );

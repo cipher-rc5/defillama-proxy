@@ -1,7 +1,3 @@
 // file: test/env.d.ts
-// description: Cloudflare test environment typing augmentation
+// description: Bun test environment typing
 // reference: internal
-
-declare module 'cloudflare:test' {
-	interface ProvidedEnv extends Env {}
-}
