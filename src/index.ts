@@ -1,5 +1,5 @@
 // file: src/index.ts
-// description: Main application entry point with Hono server and Effect integration
+// description: main application entry point with hono server and Effect integration
 // reference: internal
 
 import { FetchHttpClient } from '@effect/platform';
@@ -39,10 +39,7 @@ const parseBoundedInt = (value: string | undefined, fallback: number, min: numbe
 
 const parseCorsOrigins = (originsValue: string | undefined): string[] => {
   if (!originsValue) return [];
-  return originsValue
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean);
+  return originsValue.split(',').map(origin => origin.trim()).filter(Boolean);
 };
 
 const localRateLimitStore = new Map<string, { count: number, resetAt: number }>();
@@ -60,10 +57,7 @@ const fallbackRateLimitCheck = (
   }
 
   if (current.count >= maxRequests) {
-    return {
-      allowed: false,
-      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000))
-    };
+    return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)) };
   }
 
   current.count += 1;
@@ -133,35 +127,23 @@ app.use('*', async (c, next) => {
 
         if (!decision.allowed) {
           c.header('retry-after', String(decision.retryAfterSeconds));
-          return c.json({
-            error: 'rate_limit_exceeded',
-            requestId: c.get('requestId')
-          }, 429);
+          return c.json({ error: 'rate_limit_exceeded', requestId: c.get('requestId') }, 429);
         }
 
         return next();
       }
 
-      logError('Rate limiter DO failure', c.get('requestId'), {
-        status: response.status,
-        path: c.req.path
-      });
+      logError('Rate limiter DO failure', c.get('requestId'), { status: response.status, path: c.req.path });
     }
   } catch (error) {
-    logError('Rate limiter DO error', c.get('requestId'), {
-      error,
-      path: c.req.path
-    });
+    logError('Rate limiter DO error', c.get('requestId'), { error, path: c.req.path });
   }
 
   const fallback = fallbackRateLimitCheck(key, now, windowMs, maxRequests);
   if (!fallback.allowed) {
     const retryAfterSeconds = fallback.retryAfterSeconds;
     c.header('retry-after', String(Math.max(retryAfterSeconds, 1)));
-    return c.json({
-      error: 'rate_limit_exceeded',
-      requestId: c.get('requestId')
-    }, 429);
+    return c.json({ error: 'rate_limit_exceeded', requestId: c.get('requestId') }, 429);
   }
 
   return next();
@@ -200,10 +182,10 @@ const runHandler = async <A, E>(
 
           switch (taggedError._tag) {
             case 'InvalidProtocolError':
-              return c.json({
-                error: `Protocol '${taggedError.protocol}' not found`,
-                requestId: c.get('requestId')
-              }, 404);
+              return c.json(
+                { error: `Protocol '${taggedError.protocol}' not found`, requestId: c.get('requestId') },
+                404
+              );
 
             case 'ChainNotFoundError':
               return c.json({
@@ -218,13 +200,13 @@ const runHandler = async <A, E>(
                 statusCode: taggedError.statusCode,
                 path: c.req.path
               });
-              return c.json({ error: taggedError.message, requestId: c.get('requestId') }, taggedError.statusCode || 500);
+              return c.json(
+                { error: taggedError.message, requestId: c.get('requestId') },
+                taggedError.statusCode || 500
+              );
 
             case 'UpstreamError':
-              logError('Upstream Error', c.get('requestId'), {
-                message: taggedError.message,
-                path: c.req.path
-              });
+              logError('Upstream Error', c.get('requestId'), { message: taggedError.message, path: c.req.path });
               return c.json({ error: 'Service temporarily unavailable', requestId: c.get('requestId') }, 502);
 
             case 'ParseError':
@@ -233,10 +215,10 @@ const runHandler = async <A, E>(
                 message: taggedError.message,
                 path: c.req.path
               });
-              return c.json({
-                error: taggedError.message,
-                requestId: c.get('requestId')
-              }, taggedError.source === 'query' ? 400 : 500);
+              return c.json(
+                { error: taggedError.message, requestId: c.get('requestId') },
+                taggedError.source === 'query' ? 400 : 500
+              );
 
             default:
               logError('Unhandled Error', c.get('requestId'), { error, path: c.req.path });

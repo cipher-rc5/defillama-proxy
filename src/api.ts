@@ -1,5 +1,5 @@
 // file: src/api.ts
-// description: DeFiLlama API client service with retry logic and error handling
+// description: defillama api client service with retry logic and error handling
 // reference: internal
 
 import { HttpClient, HttpClientRequest } from '@effect/platform';
@@ -51,10 +51,7 @@ export const DeFiLlamaClientLive = (timeout: number) =>
         ): Effect.Effect<ProtocolData, ApiError | InvalidProtocolError | UpstreamError, never> => {
           if (isCircuitOpen()) {
             return Effect.fail(
-              new UpstreamError({
-                message: 'Upstream circuit breaker is open; retry shortly',
-                retryable: false
-              })
+              new UpstreamError({ message: 'Upstream circuit breaker is open; retry shortly', retryable: false })
             );
           }
 

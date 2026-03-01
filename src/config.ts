@@ -1,5 +1,5 @@
 // file: src/config.ts
-// description: Application configuration service with environment variable loading
+// description: application configuration service with environment variable loading
 // reference: internal
 
 import { Config, Context, Effect, Layer } from 'effect';

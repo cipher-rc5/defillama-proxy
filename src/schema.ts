@@ -1,5 +1,5 @@
 // file: src/schema.ts
-// description: Data schemas for API requests and responses
+// description: data schemas for api requests and responses
 // reference: internal
 
 import { Schema } from 'effect';

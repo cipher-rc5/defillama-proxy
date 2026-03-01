@@ -1,5 +1,5 @@
 // file: src/handler.ts
-// description: Request handlers for TVL and chains endpoints
+// description: request handlers for tvl and chains endpoints
 // reference: internal
 
 import { Effect, Option, Schema } from 'effect';
@@ -9,7 +9,10 @@ import { ApiError, ChainNotFoundError, InvalidProtocolError, UpstreamError } fro
 import { ChainsResponse, ProtocolData, QueryParams, TvlResponse } from './schema';
 
 const resolveChainKey = (
-  chainTvls: Record<string, { readonly tvl: ReadonlyArray<{ readonly date: number, readonly totalLiquidityUSD: number }> }>,
+  chainTvls: Record<
+    string,
+    { readonly tvl: ReadonlyArray<{ readonly date: number, readonly totalLiquidityUSD: number }> }
+  >,
   chain: string
 ) => {
   if (chainTvls[chain]) return chain;

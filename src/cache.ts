@@ -1,5 +1,5 @@
 // file: src/cache.ts
-// description: Cache service for Cloudflare Workers with TTL support
+// description: cache service for cloudflare workers with ttl support
 // reference: internal
 
 import { Context, Effect, Layer, Option } from 'effect';

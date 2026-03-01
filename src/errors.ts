@@ -1,5 +1,5 @@
 // file: src/errors.ts
-// description: Custom error types for the application
+// description: custom error types for the application
 // reference: internal
 
 import { Data } from 'effect';
