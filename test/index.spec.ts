@@ -55,4 +55,24 @@ describe('Worker', () => {
     expect(body.error).toContain('Invalid query parameters');
     expect(body.requestId).toBeTruthy();
   });
+
+  it('returns not_found with request id for unknown routes', async () => {
+    const response = await app.fetch(new Request('http://example.com/does-not-exist'));
+
+    expect(response.status).toBe(404);
+
+    const body = (await response.json()) as { error: string, requestId: string };
+    expect(body.error).toBe('not_found');
+    expect(body.requestId).toBeTruthy();
+  });
+
+  it('applies CORS allowlist when configured', async () => {
+    const env = { CORS_ORIGINS: 'https://allowed.example.com' };
+    const response = await app.fetch(new Request('http://example.com/health', {
+      headers: { origin: 'https://allowed.example.com' }
+    }), env);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://allowed.example.com');
+  });
 });

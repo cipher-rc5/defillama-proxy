@@ -10,6 +10,9 @@ A lightweight Cloudflare Worker that proxies and filters DeFiLlama's protocol da
 - CORS enabled for Dune Analytics
 - Returns `invalid_protocol_requested` for non-existent protocols
 - Configurable days lookback and result limits
+- Request IDs and security headers on every response
+- Configurable rate limiting and CORS allowlist
+- Upstream circuit breaker for repeated API failures
 
 ## Setup & Deployment
 
@@ -60,8 +63,18 @@ GET /protocol/{protocol}/chains
 ### Health Check
 
 ```
-GET /
+GET /health
 ```
+
+## Configuration
+
+Set environment variables in `.dev.vars` for local development or Worker vars in Cloudflare:
+
+- `CACHE_TTL` (default `600`)
+- `API_TIMEOUT` (default `5000`)
+- `CORS_ORIGINS` (comma-separated allowlist; default `*` when unset)
+- `RATE_LIMIT_MAX` (default `120`)
+- `RATE_LIMIT_WINDOW_MS` (default `60000`)
 
 ## Usage in Dune Analytics
 
@@ -118,7 +131,7 @@ The proxy returns `invalid_protocol_requested` when:
 Example error response:
 
 ```json
-{ "error": "invalid_protocol_requested" }
+{ "error": "Protocol 'invalid-protocol' not found", "requestId": "<request-id>" }
 ```
 
 ## Popular Protocols
@@ -155,7 +168,7 @@ Test locally:
 
 ```bash
 # Test Aave
-curl http://localhost:8787/protocol/aave/tvl/Ethereum?days=7&limit=5
+curl 'http://localhost:8787/protocol/aave/tvl/Ethereum?days=7&limit=5'
 
 # Test invalid protocol
 curl http://localhost:8787/protocol/invalid-protocol/tvl/Ethereum
@@ -195,7 +208,8 @@ defi-tvl-proxy/
 ## Performance Notes
 
 - Each request fetches fresh data from DeFiLlama
-- Consider implementing caching for production use
+- Protocol responses are cached and filtered at query time
+- Request spikes are controlled with in-memory rate limiting
 - The 4MB limit typically handles several years of daily TVL data
 - Default 30-day window results in ~1-2KB responses per chain
 

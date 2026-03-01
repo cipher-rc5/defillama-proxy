@@ -44,6 +44,30 @@ const parseCorsOrigins = (originsValue: string | undefined): string[] => {
 };
 
 const rateLimitStore = new Map<string, { count: number, resetAt: number }>();
+const RATE_LIMIT_STORE_MAX_ENTRIES = 10000;
+
+const pruneRateLimitStore = (now: number): void => {
+  for (const [key, entry] of rateLimitStore) {
+    if (entry.resetAt <= now) {
+      rateLimitStore.delete(key);
+    }
+  }
+
+  if (rateLimitStore.size <= RATE_LIMIT_STORE_MAX_ENTRIES) {
+    return;
+  }
+
+  for (const key of rateLimitStore.keys()) {
+    rateLimitStore.delete(key);
+    if (rateLimitStore.size <= RATE_LIMIT_STORE_MAX_ENTRIES) {
+      break;
+    }
+  }
+};
+
+const logError = (label: string, requestId: string, details: Record<string, unknown>): void => {
+  console.error(label, { requestId, ...details });
+};
 
 app.use('*', async (c, next) => {
   const requestId = crypto.randomUUID();
@@ -85,6 +109,7 @@ app.use('*', async (c, next) => {
   const windowMs = parseBoundedInt(env.RATE_LIMIT_WINDOW_MS, 60000, 1000, 3600000);
   const maxRequests = parseBoundedInt(env.RATE_LIMIT_MAX, 120, 1, 10000);
   const now = Date.now();
+  pruneRateLimitStore(now);
   const forwardedFor = c.req.header('x-forwarded-for');
   const ip = c.req.header('cf-connecting-ip') ?? forwardedFor?.split(',')[0]?.trim() ?? 'unknown';
   const key = `${ip}:${c.req.path}`;
@@ -121,7 +146,12 @@ const createAppLayer = (env: Bindings | undefined) => {
 
 // Run a handler effect with the configured dependency layer.
 const runHandler = async <A, E>(
-  c: { env: Bindings, json: (data: unknown, status?: number) => Response, get: (key: 'requestId') => string },
+  c: {
+    env: Bindings,
+    json: (data: unknown, status?: number) => Response,
+    get: (key: 'requestId') => string,
+    req: { path: string }
+  },
   program: Effect.Effect<A, E, DeFiLlamaClient | CacheService>
 ): Promise<Response> => {
   try {
@@ -150,33 +180,44 @@ const runHandler = async <A, E>(
               }, 404);
 
             case 'ApiError':
-              console.error('API Error:', taggedError.message);
+              logError('API Error', c.get('requestId'), {
+                message: taggedError.message,
+                statusCode: taggedError.statusCode,
+                path: c.req.path
+              });
               return c.json({ error: taggedError.message, requestId: c.get('requestId') }, taggedError.statusCode || 500);
 
             case 'UpstreamError':
-              console.error('Upstream Error:', taggedError.message);
+              logError('Upstream Error', c.get('requestId'), {
+                message: taggedError.message,
+                path: c.req.path
+              });
               return c.json({ error: 'Service temporarily unavailable', requestId: c.get('requestId') }, 502);
 
             case 'ParseError':
-              console.warn('Parse Error:', taggedError.message);
+              console.warn('Parse Error', {
+                requestId: c.get('requestId'),
+                message: taggedError.message,
+                path: c.req.path
+              });
               return c.json({
                 error: taggedError.message,
                 requestId: c.get('requestId')
               }, taggedError.source === 'query' ? 400 : 500);
 
             default:
-              console.error('Unhandled Error:', error);
+              logError('Unhandled Error', c.get('requestId'), { error, path: c.req.path });
               return c.json({ error: 'Internal server error', requestId: c.get('requestId') }, 500);
           }
         }
 
-        console.error('Unknown Error:', error);
+        logError('Unknown Error', c.get('requestId'), { error, path: c.req.path });
         return c.json({ error: 'Internal server error', requestId: c.get('requestId') }, 500);
       },
       onSuccess: (value) => c.json(value)
     });
   } catch (error) {
-    console.error('Runtime error:', error);
+    logError('Runtime Error', c.get('requestId'), { error, path: c.req.path });
     return c.json({ error: 'Internal server error', requestId: c.get('requestId') }, 500);
   }
 };
@@ -249,7 +290,7 @@ app.notFound((c) => {
 });
 
 app.onError((error, c) => {
-  console.error('Unhandled application error:', error);
+  logError('Unhandled application error', c.get('requestId'), { error, path: c.req.path });
   return c.json({ error: 'Internal server error', requestId: c.get('requestId') }, 500);
 });
 
