@@ -10,6 +10,7 @@ import { DeFiLlamaClient, DeFiLlamaClientLive } from './api';
 import { CacheService, CacheServiceLive } from './cache';
 import { ParseError } from './errors';
 import { handleChains, handleTvl } from './handler';
+import { RateLimiterDurableObject } from './rate-limiter';
 import { QueryParams } from './schema';
 
 interface Bindings {
@@ -18,6 +19,7 @@ interface Bindings {
   RATE_LIMIT_WINDOW_MS?: string;
   RATE_LIMIT_MAX?: string;
   CORS_ORIGINS?: string;
+  RATE_LIMITER?: DurableObjectNamespace;
   caches?: { default: Cache };
 }
 
@@ -43,26 +45,30 @@ const parseCorsOrigins = (originsValue: string | undefined): string[] => {
     .filter(Boolean);
 };
 
-const rateLimitStore = new Map<string, { count: number, resetAt: number }>();
-const RATE_LIMIT_STORE_MAX_ENTRIES = 10000;
+const localRateLimitStore = new Map<string, { count: number, resetAt: number }>();
 
-const pruneRateLimitStore = (now: number): void => {
-  for (const [key, entry] of rateLimitStore) {
-    if (entry.resetAt <= now) {
-      rateLimitStore.delete(key);
-    }
+const fallbackRateLimitCheck = (
+  key: string,
+  now: number,
+  windowMs: number,
+  maxRequests: number
+): { allowed: boolean, retryAfterSeconds: number } => {
+  const current = localRateLimitStore.get(key);
+  if (!current || now >= current.resetAt) {
+    localRateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, retryAfterSeconds: 0 };
   }
 
-  if (rateLimitStore.size <= RATE_LIMIT_STORE_MAX_ENTRIES) {
-    return;
+  if (current.count >= maxRequests) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000))
+    };
   }
 
-  for (const key of rateLimitStore.keys()) {
-    rateLimitStore.delete(key);
-    if (rateLimitStore.size <= RATE_LIMIT_STORE_MAX_ENTRIES) {
-      break;
-    }
-  }
+  current.count += 1;
+  localRateLimitStore.set(key, current);
+  return { allowed: true, retryAfterSeconds: 0 };
 };
 
 const logError = (label: string, requestId: string, details: Record<string, unknown>): void => {
@@ -109,19 +115,48 @@ app.use('*', async (c, next) => {
   const windowMs = parseBoundedInt(env.RATE_LIMIT_WINDOW_MS, 60000, 1000, 3600000);
   const maxRequests = parseBoundedInt(env.RATE_LIMIT_MAX, 120, 1, 10000);
   const now = Date.now();
-  pruneRateLimitStore(now);
   const forwardedFor = c.req.header('x-forwarded-for');
   const ip = c.req.header('cf-connecting-ip') ?? forwardedFor?.split(',')[0]?.trim() ?? 'unknown';
   const key = `${ip}:${c.req.path}`;
 
-  const current = rateLimitStore.get(key);
-  if (!current || now >= current.resetAt) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-    return next();
+  try {
+    if (env.RATE_LIMITER) {
+      const stub = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName(key));
+      const response = await stub.fetch('https://internal/rate-limit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key, windowMs, maxRequests })
+      });
+
+      if (response.ok) {
+        const decision = (await response.json()) as { allowed: boolean, retryAfterSeconds: number };
+
+        if (!decision.allowed) {
+          c.header('retry-after', String(decision.retryAfterSeconds));
+          return c.json({
+            error: 'rate_limit_exceeded',
+            requestId: c.get('requestId')
+          }, 429);
+        }
+
+        return next();
+      }
+
+      logError('Rate limiter DO failure', c.get('requestId'), {
+        status: response.status,
+        path: c.req.path
+      });
+    }
+  } catch (error) {
+    logError('Rate limiter DO error', c.get('requestId'), {
+      error,
+      path: c.req.path
+    });
   }
 
-  if (current.count >= maxRequests) {
-    const retryAfterSeconds = Math.ceil((current.resetAt - now) / 1000);
+  const fallback = fallbackRateLimitCheck(key, now, windowMs, maxRequests);
+  if (!fallback.allowed) {
+    const retryAfterSeconds = fallback.retryAfterSeconds;
     c.header('retry-after', String(Math.max(retryAfterSeconds, 1)));
     return c.json({
       error: 'rate_limit_exceeded',
@@ -129,8 +164,6 @@ app.use('*', async (c, next) => {
     }, 429);
   }
 
-  current.count += 1;
-  rateLimitStore.set(key, current);
   return next();
 });
 
@@ -295,3 +328,4 @@ app.onError((error, c) => {
 });
 
 export default app;
+export { RateLimiterDurableObject };

@@ -5,6 +5,33 @@
 import { describe, expect, it } from 'bun:test';
 import app from '../src/index';
 
+const createFakeRateLimiterNamespace = (maxRequests: number) => {
+  const store = new Map<string, number>();
+
+  return {
+    idFromName(name: string) {
+      return { name };
+    },
+    get(id: { name: string }) {
+      return {
+        fetch: async () => {
+          const next = (store.get(id.name) ?? 0) + 1;
+          store.set(id.name, next);
+
+          const allowed = next <= maxRequests;
+          return new Response(JSON.stringify({
+            allowed,
+            retryAfterSeconds: allowed ? 0 : 60
+          }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+      };
+    }
+  } as unknown as DurableObjectNamespace;
+};
+
 describe('Worker', () => {
   it('returns health status', async () => {
     const response = await app.fetch(new Request('http://example.com/health'));
@@ -74,5 +101,23 @@ describe('Worker', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe('https://allowed.example.com');
+  });
+
+  it('uses durable object rate limiter when configured', async () => {
+    const env = {
+      RATE_LIMIT_MAX: '1',
+      RATE_LIMIT_WINDOW_MS: '60000',
+      RATE_LIMITER: createFakeRateLimiterNamespace(1)
+    };
+
+    const first = await app.fetch(new Request('http://example.com/health', {
+      headers: { 'cf-connecting-ip': '198.51.100.88' }
+    }), env);
+    expect(first.status).toBe(200);
+
+    const second = await app.fetch(new Request('http://example.com/health', {
+      headers: { 'cf-connecting-ip': '198.51.100.88' }
+    }), env);
+    expect(second.status).toBe(429);
   });
 });

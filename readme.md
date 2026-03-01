@@ -12,6 +12,7 @@ A lightweight Cloudflare Worker that proxies and filters DeFiLlama's protocol da
 - Configurable days lookback and result limits
 - Request IDs and security headers on every response
 - Configurable rate limiting and CORS allowlist
+- Cloudflare Durable Object distributed rate limiting
 - Upstream circuit breaker for repeated API failures
 
 ## Setup & Deployment
@@ -75,6 +76,8 @@ Set environment variables in `.dev.vars` for local development or Worker vars in
 - `CORS_ORIGINS` (comma-separated allowlist; default `*` when unset)
 - `RATE_LIMIT_MAX` (default `120`)
 - `RATE_LIMIT_WINDOW_MS` (default `60000`)
+
+The distributed rate limiter is bound through `wrangler.jsonc` as Durable Object `RATE_LIMITER`.
 
 ## Usage in Dune Analytics
 
@@ -209,7 +212,7 @@ defi-tvl-proxy/
 
 - Each request fetches fresh data from DeFiLlama
 - Protocol responses are cached and filtered at query time
-- Request spikes are controlled with in-memory rate limiting
+- Request spikes are controlled with Durable Object distributed rate limiting
 - The 4MB limit typically handles several years of daily TVL data
 - Default 30-day window results in ~1-2KB responses per chain
 
