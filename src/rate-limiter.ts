@@ -17,13 +17,11 @@ interface RateLimitResponse {
 }
 
 const makeJson = (payload: RateLimitResponse): Response => {
-  return new Response(JSON.stringify(payload), {
-    headers: { 'content-type': 'application/json' }
-  });
+  return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
 };
 
 export class RateLimiterDurableObject {
-  constructor(private readonly state: DurableObjectState) {}
+  constructor (private readonly state: DurableObjectState) {}
 
   async fetch(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
@@ -54,11 +52,6 @@ export class RateLimiterDurableObject {
     const retryAfterSeconds = allowed ? 0 : Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
     const remaining = allowed ? Math.max(0, payload.maxRequests - entry.count) : 0;
 
-    return makeJson({
-      allowed,
-      retryAfterSeconds,
-      remaining,
-      limit: payload.maxRequests
-    });
+    return makeJson({ allowed, retryAfterSeconds, remaining, limit: payload.maxRequests });
   }
 }

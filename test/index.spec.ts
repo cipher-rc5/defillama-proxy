@@ -19,10 +19,7 @@ const createFakeRateLimiterNamespace = (maxRequests: number) => {
           store.set(id.name, next);
 
           const allowed = next <= maxRequests;
-          return new Response(JSON.stringify({
-            allowed,
-            retryAfterSeconds: allowed ? 0 : 60
-          }), {
+          return new Response(JSON.stringify({ allowed, retryAfterSeconds: allowed ? 0 : 60 }), {
             status: 200,
             headers: { 'content-type': 'application/json' }
           });
@@ -52,19 +49,18 @@ describe('Worker', () => {
   });
 
   it('enforces rate limiting', async () => {
-    const env = {
-      RATE_LIMIT_MAX: '1',
-      RATE_LIMIT_WINDOW_MS: '60000'
-    };
+    const env = { RATE_LIMIT_MAX: '1', RATE_LIMIT_WINDOW_MS: '60000' };
 
-    const first = await app.fetch(new Request('http://example.com/health', {
-      headers: { 'cf-connecting-ip': '198.51.100.10' }
-    }), env);
+    const first = await app.fetch(
+      new Request('http://example.com/health', { headers: { 'cf-connecting-ip': '198.51.100.10' } }),
+      env
+    );
     expect(first.status).toBe(200);
 
-    const second = await app.fetch(new Request('http://example.com/health', {
-      headers: { 'cf-connecting-ip': '198.51.100.10' }
-    }), env);
+    const second = await app.fetch(
+      new Request('http://example.com/health', { headers: { 'cf-connecting-ip': '198.51.100.10' } }),
+      env
+    );
     expect(second.status).toBe(429);
 
     const body = (await second.json()) as { error: string, requestId: string };
@@ -95,29 +91,28 @@ describe('Worker', () => {
 
   it('applies CORS allowlist when configured', async () => {
     const env = { CORS_ORIGINS: 'https://allowed.example.com' };
-    const response = await app.fetch(new Request('http://example.com/health', {
-      headers: { origin: 'https://allowed.example.com' }
-    }), env);
+    const response = await app.fetch(
+      new Request('http://example.com/health', { headers: { origin: 'https://allowed.example.com' } }),
+      env
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe('https://allowed.example.com');
   });
 
   it('uses durable object rate limiter when configured', async () => {
-    const env = {
-      RATE_LIMIT_MAX: '1',
-      RATE_LIMIT_WINDOW_MS: '60000',
-      RATE_LIMITER: createFakeRateLimiterNamespace(1)
-    };
+    const env = { RATE_LIMIT_MAX: '1', RATE_LIMIT_WINDOW_MS: '60000', RATE_LIMITER: createFakeRateLimiterNamespace(1) };
 
-    const first = await app.fetch(new Request('http://example.com/health', {
-      headers: { 'cf-connecting-ip': '198.51.100.88' }
-    }), env);
+    const first = await app.fetch(
+      new Request('http://example.com/health', { headers: { 'cf-connecting-ip': '198.51.100.88' } }),
+      env
+    );
     expect(first.status).toBe(200);
 
-    const second = await app.fetch(new Request('http://example.com/health', {
-      headers: { 'cf-connecting-ip': '198.51.100.88' }
-    }), env);
+    const second = await app.fetch(
+      new Request('http://example.com/health', { headers: { 'cf-connecting-ip': '198.51.100.88' } }),
+      env
+    );
     expect(second.status).toBe(429);
   });
 });

@@ -167,3 +167,6 @@ dist
 .wrangler/
 /_dev*
 bun.lock
+.DS_Store
+worker-configuration.d.ts
+wrangler.jsonc
