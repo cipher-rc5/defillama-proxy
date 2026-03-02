@@ -1,6 +1,6 @@
 # DeFi Protocol TVL Proxy for Dune Analytics
 
-A lightweight Cloudflare Worker that proxies and filters DeFiLlama's protocol data to work within Dune Analytics' 4MB response limit. Supports any DeFi protocol available on DeFiLlama.
+Cloudflare Worker that proxies and filters DeFiLlama's protocol data to work within Dune Analytics' 4MB response limit. Supports any DeFi protocol available on DeFiLlama.
 
 ## Features
 
